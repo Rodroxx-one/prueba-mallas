@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📋 Movimientos</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56,189,248,.12);
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #fb7185;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -.3px;
+    }
+
+    header h1 span { margin-right: .4rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .3rem .75rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    .badge--green  { background: rgba(52,211,153,.15); color: var(--green); }
+    .badge--yellow { background: rgba(251,191,36,.15); color: var(--yellow); }
+    .badge--red    { background: rgba(251,113,133,.15); color: var(--red); }
+    .badge--blue   { background: var(--accent-dim); color: var(--accent); }
+    .badge--purple { background: rgba(167,139,250,.15); color: var(--purple); }
+    .badge--orange { background: rgba(251,146,60,.15);  color: var(--orange); }
+
+    .search-wrap {
+      position: relative;
+      margin-bottom: 1.25rem;
+    }
+    .search-wrap input {
+      width: 100%;
+      padding: .7rem 1rem .7rem 2.6rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap .icon {
+      position: absolute;
+      left: .85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    /* ── Table (desktop) ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead { background: var(--surface); }
+    thead th {
+      padding: .75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:hover { background: rgba(56,189,248,.04); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: .7rem 1rem; white-space: nowrap; }
+
+    .codigo { font-family: 'SF Mono', SFMono-Regular, Consolas, monospace; font-weight: 600; color: var(--accent); }
+    .fecha  { color: var(--muted); font-size: .8rem; }
+
+    /* ── Cards (mobile) ── */
+    .cards { display: none; gap: .75rem; flex-direction: column; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .card__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+    .card__codigo { font-family: 'SF Mono', monospace; font-weight: 700; color: var(--accent); font-size: .95rem; }
+    .card__body { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .75rem; font-size: .82rem; }
+    .card__body .label { color: var(--muted); }
+    .card__body .value { color: var(--text); font-weight: 500; }
+    .card__extra {
+      margin-top: .6rem;
+      padding-top: .6rem;
+      border-top: 1px solid var(--border);
+      font-size: .78rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: .25rem;
+    }
+
+    /* ── Loading / Empty / Error ── */
+    .state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    .state .spinner {
+      display: inline-block;
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin-bottom: .75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: rgba(251,113,133,.1);
+      border: 1px solid rgba(251,113,133,.3);
+      border-radius: 10px;
+      padding: 1rem;
+      color: var(--red);
+      font-size: .85rem;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .table-wrap { display: none; }
+      .cards     { display: flex; }
+      header h1  { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1><span>📋</span> Movimientos</h1>
+    <span id="count" class="badge badge--blue">Cargando…</span>
+  </header>
+
+  <div class="search-wrap">
+    <span class="icon">🔍</span>
+    <input type="text" id="search" placeholder="Buscar por código rollo, tipo, zona…" />
+  </div>
+
+  <div id="error" class="error-box" style="display:none"></div>
+
+  <!-- Loading -->
+  <div id="loading" class="state">
+    <div class="spinner"></div>
+    <p>Cargando movimientos desde Supabase…</p>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="table-wrap" id="tableWrap" style="display:none">
+    <table>
+      <thead>
+        <tr>
+          <th>Código Rollo</th>
+          <th>Tipo Movimiento</th>
+          <th>Zona Origen</th>
+          <th>Zona Destino</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Mobile cards -->
+  <div class="cards" id="cards"></div>
+
+  <!-- Empty -->
+  <div id="empty" class="state" style="display:none">
+    <p style="font-size:2rem">📭</p>
+    <p style="margin-top:.5rem">No se encontraron movimientos</p>
+  </div>
+
+</div>
+
+<script>
+  // ── Supabase config ──────────────────────────────────────────────
+  const SUPABASE_URL       = 'https://cugndkgsjprxpnktdzxl.supabase.co';
+  const SUPABASE_ANON_KEY  = 'sb_publishable_zjuqw_mp5nwEG9OpTXmNug_6nKYzl6s';
+  const supabase           = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ── Estado ───────────────────────────────────────────────────────
+  let allMovimientos = [];
+
+  // ── Colores por tipo de movimiento ───────────────────────────────
+  const tipoBadge = {
+    'ENTRADA':   'badge--green',
+    'SALIDA':    'badge--red',
+    'TRASLADO':  'badge--blue',
+    'DESPACHO':  'badge--yellow',
+    'AJUSTE':    'badge--purple',
+    'DEVOLUCION':'badge--orange',
+  };
+
+  // ── Formatear fecha ──────────────────────────────────────────────
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-CL', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  // ── Render ───────────────────────────────────────────────────────
+  function render(rows) {
+    const tbody  = document.getElementById('tbody');
+    const cards  = document.getElementById('cards');
+    const count  = document.getElementById('count');
+    const empty  = document.getElementById('empty');
+    const wrap   = document.getElementById('tableWrap');
+
+    count.textContent = `${rows.length} movimiento${rows.length !== 1 ? 's' : ''}`;
+
+    if (rows.length === 0) {
+      wrap.style.display = 'none';
+      cards.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    wrap.style.display = 'block';
+
+    // Table rows
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><span class="codigo">${esc(r.codigo_rollo || '—')}</span></td>
+        <td><span class="badge ${tipoBadge[(r.tipo || '').toUpperCase()] || 'badge--blue'}">${esc(r.tipo || '—')}</span></td>
+        <td>${esc(r.zona_origen || '—')}</td>
+        <td>${esc(r.zona_destino || '—')}</td>
+        <td><span class="fecha">${formatDate(r.creado_en)}</span></td>
+      </tr>
+    `).join('');
+
+    // Mobile cards
+    cards.innerHTML = rows.map(r => `
+      <div class="card">
+        <div class="card__top">
+          <span class="card__codigo">${esc(r.codigo_rollo || '—')}</span>
+          <span class="badge ${tipoBadge[(r.tipo || '').toUpperCase()] || 'badge--blue'}">${esc(r.tipo || '—')}</span>
+        </div>
+        <div class="card__body">
+          <div><span class="label">Zona Origen</span><br><span class="value">${esc(r.zona_origen || '—')}</span></div>
+          <div><span class="label">Zona Destino</span><br><span class="value">${esc(r.zona_destino || '—')}</span></div>
+          <div><span class="label">Fecha</span><br><span class="value">${formatDate(r.creado_en)}</span></div>
+        </div>
+        <div class="card__extra">
+          ${r.documento_ref ? `<span>📄 Doc: ${esc(r.documento_ref)}</span>` : ''}
+          ${r.observacion ? `<span>💬 ${esc(r.observacion)}</span>` : ''}
+          ${r.usuario ? `<span>👤 ${esc(r.usuario)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ── Filtro ───────────────────────────────────────────────────────
+  document.getElementById('search').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase().trim();
+    if (!q) return render(allMovimientos);
+    const filtered = allMovimientos.filter(r =>
+      [r.codigo_rollo, r.tipo, r.zona_origen, r.zona_destino, r.documento_ref, r.usuario, r.observacion]
+        .some(v => (v || '').toLowerCase().includes(q))
+    );
+    render(filtered);
+  });
+
+  // ── Carga inicial ────────────────────────────────────────────────
+  async function load() {
+    const loading = document.getElementById('loading');
+    const error   = document.getElementById('error');
+
+    try {
+      const { data, error: err } = await supabase
+        .from('movimientos')
+        .select('*')
+        .order('creado_en', { ascending: false });
+
+      if (err) throw err;
+
+      allMovimientos = data || [];
+      loading.style.display = 'none';
+      render(allMovimientos);
+
+    } catch (e) {
+      loading.style.display = 'none';
+      error.style.display = 'block';
+      error.innerHTML = `<strong>Error al cargar movimientos</strong><br>${e.message}<br><br><small>Verifica que la tabla <code>movimientos</code> exista y que las políticas RLS permitan lectura anónima.</small>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
