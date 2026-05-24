@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' https://cdn.jsdelivr.net;
+                 connect-src 'self' https://cugndkgsjprxpnktdzxl.supabase.co;
+                 style-src 'self' 'unsafe-inline';" />
   <title>📦 Inventario de Rollos</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -61,6 +66,19 @@
     .badge--yellow { background: rgba(251,191,36,.15); color: var(--yellow); }
     .badge--red    { background: rgba(251,113,133,.15); color: var(--red); }
     .badge--blue   { background: var(--accent-dim); color: var(--accent); }
+
+    .nav-links { display: flex; gap: .5rem; }
+    .nav-link {
+      padding: .35rem .75rem;
+      border-radius: 8px;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      transition: background .15s, color .15s;
+    }
+    .nav-link:hover { background: var(--accent-dim); color: var(--accent); }
+    .nav-link.active { background: var(--accent-dim); color: var(--accent); }
 
     .search-wrap {
       position: relative;
@@ -156,6 +174,8 @@
     @media (max-width: 700px) {
       .table-wrap { display: none; }
       .cards     { display: flex; }
+      .nav-links { width: 100%; order: 3; }
+      header { flex-direction: column; align-items: flex-start; }
       header h1  { font-size: 1.15rem; }
     }
   </style>
@@ -165,6 +185,10 @@
 
   <header>
     <h1><span>📦</span> Inventario de Rollos</h1>
+    <nav class="nav-links">
+      <a href="index.html" class="nav-link active">📦 Rollos</a>
+      <a href="movimientos.html" class="nav-link">📋 Movimientos</a>
+    </nav>
     <span id="count" class="badge badge--blue">Cargando…</span>
   </header>
 
@@ -248,13 +272,15 @@
 
     // Table rows
     tbody.innerHTML = rows.map(r => `
-      <td><span class="codigo">${esc(r.codigo_rollo || '—')}</span></td>
-      <td>${esc(r.articulo_nombre || r.articulo_codigo || '—')}</td>
-      <td><span class="dims">${r.ancho != null && r.largo != null ? `${r.ancho} × ${r.largo} m` : '—'}</span></td>
-      <td>${esc(r.origen || '—')}</td>
-      <td>${esc(r.proveedor || '—')}</td>
-      <td><span class="badge ${estadoBadge[r.estado] || 'badge--blue'}">${esc(r.estado || '—')}</span></td>
-      <td>${esc(r.zona_actual || '—')}</td>
+      <tr>
+        <td><span class="codigo">${esc(r.codigo_rollo || '—')}</span></td>
+        <td>${esc(r.articulo_nombre || r.articulo_codigo || '—')}</td>
+        <td><span class="dims">${r.ancho != null && r.largo != null ? `${r.ancho} × ${r.largo} m` : '—'}</span></td>
+        <td>${esc(r.origen || '—')}</td>
+        <td>${esc(r.proveedor || '—')}</td>
+        <td><span class="badge ${estadoBadge[r.estado] || 'badge--blue'}">${esc(r.estado || '—')}</span></td>
+        <td>${esc(r.zona_actual || '—')}</td>
+      </tr>
     `).join('');
 
     // Mobile cards
@@ -301,6 +327,7 @@
       const { data, error: err } = await supabase
         .from('rollos')
         .select('*')
+        .limit(100)
         .order('creado_en', { ascending: false });
 
       if (err) throw err;
@@ -312,7 +339,17 @@
     } catch (e) {
       loading.style.display = 'none';
       error.style.display = 'block';
-      error.innerHTML = `<strong>Error al cargar datos</strong><br>${e.message}<br><br><small>Verifica que la tabla <code>rollos</code> exista y que las políticas RLS permitan lectura anónima.</small>`;
+      error.innerHTML = '';
+      const strong = document.createElement('strong');
+      strong.textContent = 'Error al cargar datos';
+      error.appendChild(strong);
+      error.appendChild(document.createElement('br'));
+      error.appendChild(document.createTextNode(e.message));
+      error.appendChild(document.createElement('br'));
+      error.appendChild(document.createElement('br'));
+      const small = document.createElement('small');
+      small.textContent = 'Verifica que la tabla rollos exista y que las políticas RLS permitan lectura anónima.';
+      error.appendChild(small);
     }
   }
 

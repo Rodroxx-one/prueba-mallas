@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' https://cdn.jsdelivr.net;
+                 connect-src 'self' https://cugndkgsjprxpnktdzxl.supabase.co;
+                 style-src 'self' 'unsafe-inline';" />
   <title>📋 Movimientos</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -65,6 +70,19 @@
     .badge--blue   { background: var(--accent-dim); color: var(--accent); }
     .badge--purple { background: rgba(167,139,250,.15); color: var(--purple); }
     .badge--orange { background: rgba(251,146,60,.15);  color: var(--orange); }
+
+    .nav-links { display: flex; gap: .5rem; }
+    .nav-link {
+      padding: .35rem .75rem;
+      border-radius: 8px;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      transition: background .15s, color .15s;
+    }
+    .nav-link:hover { background: var(--accent-dim); color: var(--accent); }
+    .nav-link.active { background: var(--accent-dim); color: var(--accent); }
 
     .search-wrap {
       position: relative;
@@ -170,6 +188,8 @@
     @media (max-width: 700px) {
       .table-wrap { display: none; }
       .cards     { display: flex; }
+      .nav-links { width: 100%; order: 3; }
+      header { flex-direction: column; align-items: flex-start; }
       header h1  { font-size: 1.15rem; }
     }
   </style>
@@ -179,6 +199,10 @@
 
   <header>
     <h1><span>📋</span> Movimientos</h1>
+    <nav class="nav-links">
+      <a href="index.html" class="nav-link">📦 Rollos</a>
+      <a href="movimientos.html" class="nav-link active">📋 Movimientos</a>
+    </nav>
     <span id="count" class="badge badge--blue">Cargando…</span>
   </header>
 
@@ -332,6 +356,7 @@
       const { data, error: err } = await supabase
         .from('movimientos')
         .select('*')
+        .limit(100)
         .order('creado_en', { ascending: false });
 
       if (err) throw err;
@@ -343,7 +368,17 @@
     } catch (e) {
       loading.style.display = 'none';
       error.style.display = 'block';
-      error.innerHTML = `<strong>Error al cargar movimientos</strong><br>${e.message}<br><br><small>Verifica que la tabla <code>movimientos</code> exista y que las políticas RLS permitan lectura anónima.</small>`;
+      error.innerHTML = '';
+      const strong = document.createElement('strong');
+      strong.textContent = 'Error al cargar movimientos';
+      error.appendChild(strong);
+      error.appendChild(document.createElement('br'));
+      error.appendChild(document.createTextNode(e.message));
+      error.appendChild(document.createElement('br'));
+      error.appendChild(document.createElement('br'));
+      const small = document.createElement('small');
+      small.textContent = 'Verifica que la tabla movimientos exista y que las políticas RLS permitan lectura anónima.';
+      error.appendChild(small);
     }
   }
 
